@@ -1,7 +1,8 @@
 # PIC18F47Q10 – Fading LED
 
 > [!NOTE]
-> Este proyecto forma parte de [**TheAssemblyChronicles-PIC**](https://remgo696.github.io/TheAssemblyChronicles-PIC/), una serie de proyectos y documentación orientada al aprendizaje de los microcontroladores PIC18F. Para más teoría, guías rápidas y otros proyectos, visita la [sección de proyectos](https://remgo696.github.io/TheAssemblyChronicles-PIC/proyectos/).
+> Este proyecto forma parte de [**TheAssemblyChronicles-PIC**](https://remgo696.github.io/TheAssemblyChronicles-PIC/), una serie de proyectos, documentación y guías rápidas orientadas al aprendizaje de los microcontroladores PIC18F. 
+Puedes encontrar más proyectos [aquí](https://remgo696.github.io/TheAssemblyChronicles-PIC/proyectos/).
 
 ---
 
@@ -37,24 +38,9 @@ Se utiliza el oscilador interno de alta frecuencia (HFINTOSC) a 2 MHz sin diviso
 | **Campo** | — | NOSC[2:0] | NDIV[3:0] |
 | **Permisos** | — | R/W | R/W |
 
-| NOSC[2:0] | Fuente de reloj |
-|:---------:|:----------------|
-| 110 | HFINTOSC |
-| 100 | LFINTOSC |
-| 010 | HFINTOSC con 4× PLL |
-
-| NDIV[3:0] | División |
-|:---------:|:--------:|
-| 0000 | 1:1 |
-| 0001 | 1:2 |
-| 0010 | 1:4 |
-
 **OSCFRQ** – HFINTOSC Frequency Selection Register
 
-| Bit | 7:3 | 2:0 |
-|:---:|:---:|:---:|
-| **Campo** | — | FRQ[2:0] |
-| **Permisos** | — | R/W |
+El registro `OSCFRQ` solo tiene un campo y se descompone como  `-[7:3]:FRQ[2:0]`.
 
 | FRQ[2:0] | Frecuencia HFINTOSC |
 |:--------:|:-------------------:|
@@ -111,7 +97,7 @@ El *duty cycle* de la señal PWM determina la intensidad luminosa del LED. Se in
 
 El tiempo en alto correspondiente a un 1 % del periodo es:
 
-$$T_{ON}(1\%) = \frac{T_{PWM}}{100} = \frac{400\ \mu s}{100} = 4\ \mu s$$
+$$T_{ON\ (1\%)} = \frac{T_{PWM}}{100} = \frac{400\ \mu s}{100} = 4\ \mu s$$
 
 El valor de 10 bits que representa ese 1 % en el registro `CCPR1` se calcula como:
 
