@@ -97,11 +97,11 @@ El *duty cycle* de la señal PWM determina la intensidad luminosa del LED. Se in
 
 El tiempo en alto correspondiente a un 1 % del periodo es:
 
-$$T_{ON}(1\%) = \frac{T_{PWM}}{100} = \frac{400\ \mu s}{100} = 4\ \mu s$$
+$$T_{ON}(1\\%) = \frac{T_{PWM}}{100} = \frac{400\ \mu s}{100} = 4\ \mu s$$
 
 El valor de 10 bits que representa ese 1 % en el registro `CCPR1` se calcula como:
 
-$$\text{CCPRx value}(1\%) = \frac{T_{ON} \times F_{osc}}{Prescaler_{TMR2}} = \frac{4 \times 10^{-6} \times 2 \times 10^{6}}{1} = 8$$
+$$\text{CCPRx value}(1\\%) = \frac{T_{ON} \times F_{osc}}{Prescaler_{TMR2}} = \frac{4 \times 10^{-6} \times 2 \times 10^{6}}{1} = 8$$
 
 Usando el formato **justificado a la izquierda** (`FMT = 1`), el valor de 10 bits se distribuye en `CCPR1H` (los 8 bits más significativos) y `CCPR1L[7:6]` (los 2 bits menos significativos):
 
@@ -284,7 +284,7 @@ La rutina de interrupción del TMR0 se dispara cada ≈ 8,3 ms (120 Hz). En cada
 ```mermaid
 flowchart TD
     A([main]) --> B["configure()"]
-    B --> C{"1 != 0"}
+    B --> C{"¿1 ≠ 0?"}
     C -->|Sí| C
 ```
 
@@ -293,14 +293,14 @@ flowchart TD
 ```mermaid
 flowchart TD
     A([TMR0 ISR]) --> B["TMR0IF = 0"]
-    B --> C{"b_subiendo == 1?"}
+    B --> C{"¿b_subiendo = 1?"}
 
-    C -- Sí --> D{"duty_cycle < 100?"}
+    C -- Sí --> D{"¿duty_cycle < 100?"}
     D -- Sí --> E["duty_cycle++
     CCPR1H += 2"]
     D -- No --> F["b_subiendo = 0"]
 
-    C -- No --> G{"duty_cycle > 0?"}
+    C -- No --> G{"¿duty_cycle > 0?"}
     G -- Sí --> H["duty_cycle--
     CCPR1H -= 2"]
     G -- No --> I["b_subiendo = 1"]
