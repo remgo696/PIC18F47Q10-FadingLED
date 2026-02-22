@@ -21,7 +21,7 @@ Para lograrlo se emplean tres periféricos del PIC18F47Q10:
 La salida PWM se dirige al pin **RC0** mediante el módulo PPS.
 
 <!-- La imagen se añadirá cuando esté disponible -->
-![Demo del proyecto](img/demo.gif)
+![Demo del proyecto](img/implementation.gif)
 
 ---
 
@@ -79,7 +79,7 @@ OSCEN   = 0x40;  // Habilitar HFINTOSC
 
 ---
 
-## Señal PWM Deseada
+## Configuración del Módulo CCP en Modo PWM
 
 ### Periodo de 400 µs
 
@@ -97,11 +97,11 @@ El *duty cycle* de la señal PWM determina la intensidad luminosa del LED. Se in
 
 El tiempo en alto correspondiente a un 1 % del periodo es:
 
-$$T_{ON\ (1\%)} = \frac{T_{PWM}}{100} = \frac{400\ \mu s}{100} = 4\ \mu s$$
+$$T_{ON}(1\%) = \frac{T_{PWM}}{100} = \frac{400\ \mu s}{100} = 4\ \mu s$$
 
 El valor de 10 bits que representa ese 1 % en el registro `CCPR1` se calcula como:
 
-$$CCPRx\ value\ (1\%) = \frac{T_{ON} \times F_{osc}}{Prescaler_{TMR2}} = \frac{4 \times 10^{-6} \times 2 \times 10^{6}}{1} = 8$$
+$$\text{CCPRx value}(1\%) = \frac{T_{ON} \times F_{osc}}{Prescaler_{TMR2}} = \frac{4 \times 10^{-6} \times 2 \times 10^{6}}{1} = 8$$
 
 Usando el formato **justificado a la izquierda** (`FMT = 1`), el valor de 10 bits se distribuye en `CCPR1H` (los 8 bits más significativos) y `CCPR1L[7:6]` (los 2 bits menos significativos):
 
@@ -110,6 +110,81 @@ $$8 = 00\ 0000\ 1000_{(2)} \Rightarrow CCPR1H = 0000\ 0010_{(2)} = 2,\quad CCPR1
 Por lo tanto, para cada paso de ± 1 %, basta con **sumar o restar 2 a `CCPR1H`**.
 
 > **Verificación:** Al 100 %, se habrán sumado $100 \times 2 = 200$ a `CCPR1H`. El valor de 10 bits resultante es $200 \times 4 = 800 = (T2PR + 1) \times 4$, lo cual indica que la señal se mantiene en alto durante todo el periodo. ✓
+
+### Registros del CCP y TMR2
+
+**CCPTMRS** – CCP Timer Selection Register
+
+| Bit | 3:2 | 1:0 |
+|:---:|:---:|:---:|
+| **Campo** | C2TSEL[1:0] | C1TSEL[1:0] |
+| **Permisos** | R/W | R/W |
+| **Reset** | 00 | 00 |
+
+| C1TSEL[1:0] | Timer asociado al CCP1 |
+|:-----------:|:----------------------:|
+| 01 | TMR2 |
+| 10 | TMR4 |
+| 11 | TMR6 |
+
+**RxyPPS** – PPS Output Selection (Banco 0x0E)
+
+| RxyPPS | Módulo | Puertos destino |
+|:------:|:------:|:---------------:|
+| 0x05 | CCP1 | RB, RC |
+| 0x06 | CCP2 | RB, RC |
+
+**CCP1CON** – CCP1 Control Register
+
+| Bit | 7 | 6 | 5 | 4 | 3:0 |
+|:---:|:---:|:---:|:---:|:---:|:---:|
+| **Campo** | EN | — | OUT | FMT | MODE[3:0] |
+| **Permisos** | R/W | — | RO | R/W | R/W |
+| **Reset** | 0 | — | x | 0 | 0000 |
+
+- `EN = 1`: habilitar CCP1
+- `FMT = 1`: justificado a la izquierda
+- `MODE = 1100`: modo PWM
+
+**CCPR1H:L** – Duty Cycle (10 bits)
+
+Con `FMT = 1` (justificado a la izquierda):
+
+| CCPR1H[7:0] | CCPR1L[7:6] |
+|:-----------:|:-----------:|
+| Bits 9:2 del valor de 10 bits | Bits 1:0 del valor de 10 bits |
+
+**T2CON** – Timer2 Control Register
+
+| Bit | 7 | 6:4 | 3:0 |
+|:---:|:---:|:---:|:---:|
+| **Campo** | ON | CKPS[2:0] | OUTPS[3:0] |
+| **Permisos** | R/W | R/W | R/W |
+| **Reset** | 0 | 000 | 0000 |
+
+- `ON = 1`: habilitar TMR2
+- `CKPS = 000`: prescaler 1:1
+
+> [!WARNING]
+> El PostScaler del TMR2 no afecta el periodo de la señal PWM, solo influye en la generación de interrupciones del timer.
+
+### Configuración completa del CCP1
+
+```c
+/* PPS: CCP1 → RC0 */
+RC0PPS = 0x05;               // Dirigir la salida CCP1 al pin RC0
+ANSELCbits.ANSELC0 = 0;      // RC0 como digital
+TRISCbits.TRISC0 = 0;        // RC0 como salida
+
+/* CCP1 + TMR2 */
+CCPTMRSbits.C1TSEL = 1;      // CCP1 usa TMR2
+T2PR = 199;                  // Periodo PWM = 400 µs
+CCP1CON = 0x9C;              // EN=1, FMT=1, MODE=1100 (PWM)
+CCPR1H = 0x00;
+CCPR1L = 0x00;               // Duty cycle inicial = 0 %
+T2CLKCON = 0x01;             // Fuente de reloj TMR2 = Fosc/4
+T2CON = 0x80;                // TMR2 ON, prescaler 1:1
+```
 
 ---
 
@@ -189,97 +264,6 @@ INTCONbits.GIE  = 1;   // Habilitar interrupciones globales
 
 ---
 
-## Módulo CCP en Modo PWM
-
-### Cálculos previos
-
-Los resultados obtenidos en la sección [Señal PWM Deseada](#señal-pwm-deseada) se resumen aquí:
-
-| Parámetro | Valor |
-|:----------|:-----:|
-| Periodo ($T_{PWM}$) | 400 µs |
-| `T2PR` | 199 |
-| Duty cycle por paso (1 %) | 8 (10 bits) |
-| Incremento en `CCPR1H` por cada 1 % | 2 |
-| Rango de `CCPR1H` | 0 (0 %) – 200 (100 %) |
-
-### Registros del CCP y TMR2
-
-**CCPTMRS** – CCP Timer Selection Register
-
-| Bit | 3:2 | 1:0 |
-|:---:|:---:|:---:|
-| **Campo** | C2TSEL[1:0] | C1TSEL[1:0] |
-| **Permisos** | R/W | R/W |
-| **Reset** | 00 | 00 |
-
-| C1TSEL[1:0] | Timer asociado al CCP1 |
-|:-----------:|:----------------------:|
-| 01 | TMR2 |
-| 10 | TMR4 |
-| 11 | TMR6 |
-
-**RxyPPS** – PPS Output Selection (Banco 0x0E)
-
-| RxyPPS | Módulo | Puertos destino |
-|:------:|:------:|:---------------:|
-| 0x05 | CCP1 | RB, RC |
-| 0x06 | CCP2 | RB, RC |
-
-**CCP1CON** – CCP1 Control Register
-
-| Bit | 7 | 6 | 5 | 4 | 3:0 |
-|:---:|:---:|:---:|:---:|:---:|:---:|
-| **Campo** | EN | — | OUT | FMT | MODE[3:0] |
-| **Permisos** | R/W | — | RO | R/W | R/W |
-| **Reset** | 0 | — | x | 0 | 0000 |
-
-- `EN = 1`: habilitar CCP1
-- `FMT = 1`: justificado a la izquierda
-- `MODE = 1100`: modo PWM
-
-**CCPR1H:L** – Duty Cycle (10 bits)
-
-Con `FMT = 1` (justificado a la izquierda):
-
-| CCPR1H[7:0] | CCPR1L[7:6] |
-|:-----------:|:-----------:|
-| Bits 9:2 del valor de 10 bits | Bits 1:0 del valor de 10 bits |
-
-**T2CON** – Timer2 Control Register
-
-| Bit | 7 | 6:4 | 3:0 |
-|:---:|:---:|:---:|:---:|
-| **Campo** | ON | CKPS[2:0] | OUTPS[3:0] |
-| **Permisos** | R/W | R/W | R/W |
-| **Reset** | 0 | 000 | 0000 |
-
-- `ON = 1`: habilitar TMR2
-- `CKPS = 000`: prescaler 1:1
-
-> [!WARNING]
-> El PostScaler del TMR2 no afecta el periodo de la señal PWM, solo influye en la generación de interrupciones del timer.
-
-### Configuración completa del CCP1
-
-```c
-/* PPS: CCP1 → RC0 */
-RC0PPS = 0x05;               // Dirigir la salida CCP1 al pin RC0
-ANSELCbits.ANSELC0 = 0;      // RC0 como digital
-TRISCbits.TRISC0 = 0;        // RC0 como salida
-
-/* CCP1 + TMR2 */
-CCPTMRSbits.C1TSEL = 1;      // CCP1 usa TMR2
-T2PR = 199;                  // Periodo PWM = 400 µs
-CCP1CON = 0x9C;              // EN=1, FMT=1, MODE=1100 (PWM)
-CCPR1H = 0x00;
-CCPR1L = 0x00;               // Duty cycle inicial = 0 %
-T2CLKCON = 0x01;             // Fuente de reloj TMR2 = Fosc/4
-T2CON = 0x80;                // TMR2 ON, prescaler 1:1
-```
-
----
-
 ## Programa
 
 ### Descripción general
@@ -300,8 +284,8 @@ La rutina de interrupción del TMR0 se dispara cada ≈ 8,3 ms (120 Hz). En cada
 ```mermaid
 flowchart TD
     A([main]) --> B["configure()"]
-    B --> C{"while (1)"}
-    C -->|loop| C
+    B --> C{"1 != 0"}
+    C -->|Sí| C
 ```
 
 ### Rutina de interrupción (TMR0)
@@ -321,7 +305,7 @@ flowchart TD
     CCPR1H -= 2"]
     G -- No --> I["b_subiendo = 1"]
 
-    E --> J([Retorno])
+    E --> J([return])
     F --> J
     H --> J
     I --> J
