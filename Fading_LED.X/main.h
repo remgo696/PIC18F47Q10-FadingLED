@@ -89,6 +89,7 @@ extern "C" {
    
 #include <xc.h>
 
+#define _XTAL_FREQ 2000000UL   // Fosc = 2 MHz
 
 
 
