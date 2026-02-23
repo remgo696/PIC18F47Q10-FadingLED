@@ -1,0 +1,24 @@
+# ===========================
+# MPLAB X build outputs
+# ===========================
+Fading_LED.X/dist/
+Fading_LED.X/build/
+Fading_LED.X/debug/
+
+# ===========================
+# MPLAB X private settings
+# ===========================
+Fading_LED.X/nbproject/private/
+
+# ===========================
+# Proteus backups & workspace
+# ===========================
+Project Backups/
+*.pdsprj.*.workspace
+
+# ===========================
+# OS generated files
+# ===========================
+Thumbs.db
+Desktop.ini
+.DS_Store
